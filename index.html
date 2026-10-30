@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Philippine SEC GIS Auto-Filler (Stock Corporation)</title>
+  <style>
+    :root {
+      --primary: #003366;
+      --primary-dark: #002244;
+      --accent: #d4af37;
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --text: #2d3748;
+      --border: #cbd5e0;
+      --success: #28a745;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+    }
+    header.app-header {
+      background: var(--primary);
+      color: white;
+      padding: 15px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .top-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-sample { background: #e2e8f0; color: #1a202c; }
+    .btn-sample:hover { background: #cbd5e0; }
+    .btn-export { background: #2b6cb0; color: white; }
+    .btn-export:hover { background: #2c5282; }
+    .btn-primary { background: #27ae60; color: white; }
+    .btn-primary:hover { background: #219150; }
+    .btn-secondary { background: #edf2f7; color: #4a5568; border: 1px solid var(--border); }
+    
+    .container {
+      max-width: 1250px;
+      margin: 20px auto;
+      padding: 0 15px;
+    }
+    .tabs-nav {
+      display: flex;
+      flex-wrap: wrap;
+      background: #e2e8f0;
+      border-radius: 8px 8px 0 0;
+      padding: 6px 6px 0 6px;
+      gap: 4px;
+    }
+    .tab-btn {
+      padding: 10px 18px;
+      border: none;
+      background: #cbd5e0;
+      color: #2d3748;
+      font-weight: 600;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .tab-btn.active {
+      background: var(--card);
+      color: var(--primary);
+      border-bottom: 3px solid var(--primary);
+    }
+    .tab-content {
+      background: var(--card);
+      padding: 25px;
+      border-radius: 0 0 8px 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border: 1px solid var(--border);
+      border-top: none;
+      min-height: 480px;
+    }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-group.full-width { grid-column: 1 / -1; }
+    label {
+      font-weight: 600;
+      font-size: 12px;
+      color: #4a5568;
+      text-transform: uppercase;
+    }
+    input, select, textarea {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      background: #fff;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(0,51,102,0.15);
+    }
+    .table-container {
+      overflow-x: auto;
+      margin-top: 15px;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    table.data-table th, table.data-table td {
+      border: 1px solid var(--border);
+      padding: 6px 8px;
+      text-align: left;
+    }
+    table.data-table th {
+      background: #edf2f7;
+      color: #2d3748;
+      font-weight: 700;
+    }
+    .btn-add {
+      margin-top: 10px;
+      padding: 6px 12px;
+      background: #3182ce;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-remove {
+      background: #e53e3e;
+      color: white;
+      border: none;
+      padding: 3px 7px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    /* Print Preview Styles */
+    #printPreviewModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 9999;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    .modal-sheet {
+      background: white;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 30px;
+      border-radius: 6px;
+      position: relative;
+    }
+    .modal-actions {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      padding: 10px 0;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    /* Standard Philippine SEC Form Print Emulation */
+    .sec-sheet {
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      line-height: 1.25;
+      color: #000;
+      margin-bottom: 30px;
+      page-break-after: always;
+    }
+    .sec-header {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .sec-header h2 { margin: 0; font-size: 13px; }
+    .sec-header h3 { margin: 2px 0; font-size: 11px; font-weight: normal; }
+    .sec-grid {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8px;
+    }
+    .sec-grid td, .sec-grid th {
+      border: 1px solid #000;
+      padding: 3px 5px;
+      vertical-align: top;
+    }
+    .sec-grid th {
+      background-color: #f0f0f0;
+      font-size: 9px;
+      text-align: center;
+    }
+    .field-label {
+      font-size: 8px;
+      text-transform: uppercase;
+      font-weight: bold;
+      color: #333;
+      display: block;
+    }
+    .field-val {
+      font-size: 10px;
+      font-weight: bold;
+      color: #000;
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      .sec-sheet {
+        page-break-after: always;
+        padding: 15mm 10mm;
+      }
+      .modal-actions, .app-header, .container { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div>
+      <h1>🇵🇭 SEC GIS Auto-Filler & Generator</h1>
+      <small style="opacity: 0.85;">Stock Corporation — General Information Sheet</small>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-sample" onclick="loadSampleData()">📂 Load Sample Data</button>
+      <button class="btn btn-export" onclick="exportGIS_CSV()">📊 Export to SEC CSV</button>
+      <button class="btn btn-primary" onclick="generateDocument()">🖨️ View & Print Official GIS</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="openTab('general')">1. Corporate Profile</button>
+      <button class="tab-btn" onclick="openTab('amla')">2. AMLA Compliance</button>
+      <button class="tab-btn" onclick="openTab('capital')">3. Capital Structure</button>
+      <button class="tab-btn" onclick="openTab('officers')">4. Directors & Officers</button>
+      <button class="tab-btn" onclick="openTab('stockholders')">5. Top Stockholders</button>
+      <button class="tab-btn" onclick="openTab('finops')">6. Operations & Funds</button>
+      <button class="tab-btn" onclick="openTab('jurat')">7. Certification & Notary</button>
+    </div>
+
+    <form id="gisForm">
+      <!-- 1. Corporate Profile -->
+      <div id="general" class="tab-content tab-pane active">
+        <h3>Page 1: General Corporate Details</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>For the Year</label>
+            <input type="text" id="gisYear" value="2026" />
+          </div>
+          <div class="form-group">
+            <label>Corporate Name (per By-Laws)</label>
+            <input type="text" id="corpName" placeholder="e.g., APEX INNOVATIONS HOLDINGS CORP." />
+          </div>
+          <div class="form-group">
+            <label>Business / Trade Name</label>
+            <input type="text" id="tradeName" placeholder="e.g., APEX INNOVATIONS" />
+          </div>
+          <div class="form-group">
+            <label>SEC Registration Number</label>
+            <input type="text" id="secRegNo" placeholder="CS201912345" />
+          </div>
+          <div class="form-group">
+            <label>Date Registered</label>
+            <input type="date" id="dateRegistered" />
+          </div>
+          <div class="form-group">
+            <label>Corporate TIN</label>
+            <input type="text" id="corpTIN" placeholder="009-876-543-000" />
+          </div>
+          <div class="form-group">
+            <label>Fiscal Year End</label>
+            <input type="text" id="fiscalYearEnd" value="December 31" />
+          </div>
+          <div class="form-group">
+            <label>Date of Annual Meeting per By-Laws</label>
+            <input type="text" id="annualMeetingByLaws" placeholder="Every 2nd Tuesday of May" />
+          </div>
+          <div class="form-group">
+            <label>Actual Date of Annual Meeting</label>
+            <input type="date" id="actualMeetingDate" />
+          </div>
+          <div class="form-group">
+            <label>Website / URL Address</label>
+            <input type="url" id="websiteUrl" placeholder="https://www.example.com.ph" />
+          </div>
+          <div class="form-group full-width">
+            <label>Complete Principal Office Address</label>
+            <input type="text" id="principalAddress" placeholder="Unit 1401 Ayala Tower One, Ayala Ave., Makati City" />
+          </div>
+          <div class="form-group full-width">
+            <label>Complete Business Address (If different)</label>
+            <input type="text" id="businessAddress" placeholder="Same as Principal Address" />
+          </div>
+          <div class="form-group">
+            <label>Official Email Address (MC28 Registered)</label>
+            <input type="email" id="officialEmail" placeholder="corpsec@example.com.ph" />
+          </div>
+          <div class="form-group">
+            <label>Alternate Email Address</label>
+            <input type="email" id="altEmail" placeholder="admin@example.com.ph" />
+          </div>
+          <div class="form-group">
+            <label>Official Mobile Number</label>
+            <input type="text" id="officialMobile" placeholder="+63 917 123 4567" />
+          </div>
+          <div class="form-group">
+            <label>Alternate Mobile Number</label>
+            <input type="text" id="altMobile" placeholder="+63 918 765 4321" />
+          </div>
+          <div class="form-group">
+            <label>External Auditor & Signing Partner</label>
+            <input type="text" id="auditorName" placeholder="SGV & Co. / Juan Dela Cruz, CPA" />
+          </div>
+          <div class="form-group">
+            <label>Auditor SEC Accreditation Number</label>
+            <input type="text" id="auditorAccreditation" placeholder="SEC-ACCR-00123" />
+          </div>
+          <div class="form-group">
+            <label>Telephone Number(s)</label>
+            <input type="text" id="telephone" placeholder="(02) 8888-1234" />
+          </div>
+          <div class="form-group">
+            <label>Industry Classification Code</label>
+            <input type="text" id="industryCode" placeholder="K64200 (Holding Activities)" />
+          </div>
+          <div class="form-group">
+            <label>Geographical Code</label>
+            <input type="text" id="geoCode" placeholder="137600000" />
+          </div>
+          <div class="form-group full-width">
+            <label>Primary Purpose / Industry Presently Engaged In</label>
+            <textarea id="primaryPurpose" rows="2" placeholder="To engage in business of investing, holding, acquiring securities..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. AMLA Compliance -->
+      <div id="amla" class="tab-content tab-pane">
+        <h3>Page 2: Anti-Money Laundering Act (AMLA) Coverage</h3>
+        <div class="form-group">
+          <label>Is the Corporation a covered person under AMLA, as amended?</label>
+          <select id="amlaCovered" onchange="toggleAmlaDetails()">
+            <option value="NO">NO — None of the covered institution categories</option>
+            <option value="YES">YES — Covered Person under AMLA</option>
+          </select>
+        </div>
+        <div id="amlaDetails" style="margin-top: 15px;">
+          <label>Covered Category / Specific Activity</label>
+          <input type="text" id="amlaCategory" placeholder="e.g. Item 8: None of the above / Regular Commerce" value="Item 8: None of the above" />
+          <div class="form-group" style="margin-top: 10px;">
+            <label>Describe Nature of Business</label>
+            <input type="text" id="amlaBusinessNature" placeholder="General Commercial Trading / Software Services" />
+          </div>
+          <div class="form-group" style="margin-top: 10px;">
+            <label>Has the Corporation complied with CDD/KYC, record-keeping, and reporting requirements under AMLA?</label>
+            <select id="amlaKycComplied">
+              <option value="N.A.">N.A. (Not Applicable - Not a covered entity)</option>
+              <option value="YES">YES</option>
+              <option value="NO">NO</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Capital Structure -->
+      <div id="capital" class="tab-content tab-pane">
+        <h3>Page 3: Capital Structure</h3>
+        <h4>Authorized Capital Stock</h4>
+        <div class="table-container">
+          <table class="data-table" id="authCapTable">
+            <thead>
+              <tr>
+                <th>Type of Shares</th>
+                <th>Number of Shares</th>
+                <th>Par/Stated Value (₱)</th>
+                <th>Total Amount (₱)</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><input type="text" value="Common" class="auth-type" /></td>
+                <td><input type="number" value="1000000" class="auth-shares" oninput="calcCap()" /></td>
+                <td><input type="number" value="1.00" step="0.01" class="auth-par" oninput="calcCap()" /></td>
+                <td><input type="text" class="auth-amount" readonly value="1,000,000.00" /></td>
+                <td><button type="button" class="btn-remove" onclick="removeRow(this)">✕</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button type="button" class="btn-add" onclick="addAuthRow()">+ Add Share Type</button>
+        </div>
+
+        <h4 style="margin-top: 25px;">Subscribed & Paid-Up Summary</h4>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Total Subscribed Shares (Filipino)</label>
+            <input type="number" id="subFilShares" value="600000" oninput="calcCap()" />
+          </div>
+          <div class="form-group">
+            <label>Filipino Subscribed Amount (₱)</label>
+            <input type="text" id="subFilAmount" readonly value="600,000.00" />
+          </div>
+          <div class="form-group">
+            <label>Total Subscribed Shares (Foreign)</label>
+            <input type="number" id="subForShares" value="0" oninput="calcCap()" />
+          </div>
+          <div class="form-group">
+            <label>Foreign Subscribed Amount (₱)</label>
+            <input type="text" id="subForAmount" readonly value="0.00" />
+          </div>
+          <div class="form-group">
+            <label>Percentage of Foreign Equity (%)</label>
+            <input type="text" id="forEquityPct" readonly value="0.00%" />
+          </div>
+          <div class="form-group">
+            <label>Total Paid-Up Capital (₱)</label>
+            <input type="number" id="totalPaidUp" value="250000" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Directors & Officers -->
+      <div id="officers" class="tab-content tab-pane">
+        <h3>Page 4: Directors and Officers</h3>
+        <p><small>Codes: <b>Board:</b> C = Chairman, M = Member, I = Independent Director | <b>Inc'r:</b> Y / N | <b>Stockholder:</b> Y / N</small></p>
+        <div class="table-container">
+          <table class="data-table" id="officersTable">
+            <thead>
+              <tr>
+                <th>Full Name & Residential Address</th>
+                <th>Nationality</th>
+                <th>Inc'r</th>
+                <th>Board</th>
+                <th>Gender</th>
+                <th>Stockholder</th>
+                <th>Officer Position</th>
+                <th>Exec. Comm.</th>
+                <th>TIN</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="officersBody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+          <button type="button" class="btn-add" onclick="addOfficerRow()">+ Add Director/Officer</button>
+        </div>
+      </div>
+
+      <!-- 5. Stockholders -->
+      <div id="stockholders" class="tab-content tab-pane">
+        <h3>Pages 5-6: Stockholder's Information (Top 20 & Others)</h3>
+        <div class="form-grid" style="margin-bottom: 15px;">
+          <div class="form-group">
+            <label>Total Number of Stockholders</label>
+            <input type="number" id="totalStockholdersCount" value="5" />
+          </div>
+          <div class="form-group">
+            <label>Stockholders with 100 or More Shares Each</label>
+            <input type="number" id="stockholders100Count" value="5" />
+          </div>
+          <div class="form-group">
+            <label>Total Assets Based on Latest Audited FS (₱)</label>
+            <input type="text" id="totalAssetsFS" placeholder="e.g. 5,450,000.00" />
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="stockholdersTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name, Nationality & Residential Address</th>
+                <th>Type</th>
+                <th>No. of Shares</th>
+                <th>Amount Subscribed (₱)</th>
+                <th>% Owned</th>
+                <th>Amount Paid (₱)</th>
+                <th>TIN</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="stockholdersBody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+          <button type="button" class="btn-add" onclick="addStockholderRow()">+ Add Stockholder</button>
+        </div>
+      </div>
+
+      <!-- 6. Financial Operations & Intercompany -->
+      <div id="finops" class="tab-content tab-pane">
+        <h3>Page 7: Operations, Funds & Secondary Registrations</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Unrestricted Retained Earnings (End of Last FY)</label>
+            <input type="text" id="retainedEarnings" placeholder="₱ 1,200,000.00" />
+          </div>
+          <div class="form-group">
+            <label>Treasury Shares (No. of shares / % of total)</label>
+            <input type="text" id="treasuryShares" placeholder="0 / 0%" value="0 / 0%" />
+          </div>
+          <div class="form-group">
+            <label>Dividends Declared During Preceding Year (₱)</label>
+            <input type="text" id="dividendsDeclared" placeholder="0.00" value="0.00" />
+          </div>
+          <div class="form-group">
+            <label>Secondary SEC/BSP/IC License (if any)</label>
+            <input type="text" id="secondaryLicense" placeholder="N.A." value="N.A." />
+          </div>
+          <div class="form-group">
+            <label>Total Annual Compensation of Directors (₱)</label>
+            <input type="text" id="directorsComp" placeholder="0.00" value="0.00" />
+          </div>
+          <div class="form-group">
+            <label>Total Number of Officers</label>
+            <input type="number" id="numOfficers" value="4" oninput="calcManpower()" />
+          </div>
+          <div class="form-group">
+            <label>Total Rank & File Employees</label>
+            <input type="number" id="numRankFile" value="12" oninput="calcManpower()" />
+          </div>
+          <div class="form-group">
+            <label>Total Manpower Complement</label>
+            <input type="text" id="totalManpower" readonly value="16" />
+          </div>
+        </div>
+
+        <h4 style="margin-top: 25px;">Intercompany Affiliations (Parent / Subsidiary)</h4>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Parent Company Name</label>
+            <input type="text" id="parentName" placeholder="N.A. or Parent Corp." value="N.A." />
+          </div>
+          <div class="form-group">
+            <label>Parent SEC Reg. No. & Address</label>
+            <input type="text" id="parentDetails" placeholder="N.A." value="N.A." />
+          </div>
+          <div class="form-group">
+            <label>Subsidiaries / Affiliates</label>
+            <input type="text" id="subsidiaryDetails" placeholder="N.A." value="N.A." />
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. Jurat & Certification -->
+      <div id="jurat" class="tab-content tab-pane">
+        <h3>Page 8: Verification & Jurat Certification</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Corporate Secretary Full Name</label>
+            <input type="text" id="corpSecName" placeholder="Atty. Maria Santos" />
+          </div>
+          <div class="form-group">
+            <label>Execution City / Municipality</label>
+            <input type="text" id="execCity" placeholder="City of Makati" />
+          </div>
+          <div class="form-group">
+            <label>Execution Date</label>
+            <input type="date" id="execDate" />
+          </div>
+          <div class="form-group">
+            <label>Competent Evidence of Identity (Passport/DL/ID)</label>
+            <input type="text" id="corpSecID" placeholder="Philippine Passport No. P1234567B" />
+          </div>
+          <div class="form-group">
+            <label>ID Date & Place Issued</label>
+            <input type="text" id="corpSecIDDetails" placeholder="DFA NCR East / 12 Jan 2022" />
+          </div>
+          <div class="form-group">
+            <label>Notary Public Name (Optional)</label>
+            <input type="text" id="notaryName" placeholder="Atty. Pedro Penduko" />
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Print & Preview Modal -->
+  <div id="printPreviewModal">
+    <div class="modal-sheet">
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closePreview()">✕ Close Preview</button>
+        <button class="btn btn-primary" onclick="window.print()">🖨️ Print or Save as PDF</button>
+      </div>
+      <div id="printArea">
+        <!-- Generated SEC Format Appended Here -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    function openTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // Capital & Manpower Calculations
+    function calcCap() {
+      let totalAuth = 0;
+      document.querySelectorAll('#authCapTable tbody tr').forEach(row => {
+        const sh = parseFloat(row.querySelector('.auth-shares').value) || 0;
+        const par = parseFloat(row.querySelector('.auth-par').value) || 0;
+        const tot = sh * par;
+        row.querySelector('.auth-amount').value = tot.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+        totalAuth += tot;
+      });
+
+      const subFil = parseFloat(document.getElementById('subFilShares').value) || 0;
+      const subFor = parseFloat(document.getElementById('subForShares').value) || 0;
+      const parDef = 1.0; // standard par default
+      
+      const filAmt = subFil * parDef;
+      const forAmt = subFor * parDef;
+      document.getElementById('subFilAmount').value = filAmt.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+      document.getElementById('subForAmount').value = forAmt.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+
+      const totSub = subFil + subFor;
+      const pctFor = totSub > 0 ? ((subFor / totSub) * 100).toFixed(2) : "0.00";
+      document.getElementById('forEquityPct').value = pctFor + '%';
+    }
+
+    function calcManpower() {
+      const off = parseInt(document.getElementById('numOfficers').value) || 0;
+      const rf = parseInt(document.getElementById('numRankFile').value) || 0;
+      document.getElementById('totalManpower').value = (off + rf);
+    }
+
+    function addAuthRow() {
+      const tbody = document.querySelector('#authCapTable tbody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" value="Preferred" class="auth-type" /></td>
+        <td><input type="number" value="100000" class="auth-shares" oninput="calcCap()" /></td>
+        <td><input type="number" value="10.00" step="0.01" class="auth-par" oninput="calcCap()" /></td>
+        <td><input type="text" class="auth-amount" readonly value="1,000,000.00" /></td>
+        <td><button type="button" class="btn-remove" onclick="removeRow(this)">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+      calcCap();
+    }
+
+    // Dynamic Directors & Officers
+    const officersList = [
+      { name: "JUAN DELA CRUZ\n123 Ayala Ave, Makati City", nat: "Filipino", incr: "Y", board: "C", gender: "M", stock: "Y", officer: "President / CEO", comm: "A/C", tin: "101-234-567-000" },
+      { name: "MARIA CLARA SANTOS\n456 Buendia, Makati City", nat: "Filipino", incr: "Y", board: "M", gender: "F", stock: "Y", officer: "Corporate Secretary", comm: "N/M", tin: "202-345-678-000" },
+      { name: "CRISOSTOMO IBARRA\n789 Ortigas Ave, Pasig City", nat: "Filipino", incr: "Y", board: "M", gender: "M", stock: "Y", officer: "Treasurer / CFO", comm: "A/M", tin: "303-456-789-000" },
+      { name: "ELIAS NORBERTO\n101 Alabang, Muntinlupa City", nat: "Filipino", incr: "N", board: "I", gender: "M", stock: "Y", officer: "N.A.", comm: "A/C", tin: "404-567-890-000" }
+    ];
+
+    function renderOfficers() {
+      const tb = document.getElementById('officersBody');
+      tb.innerHTML = '';
+      officersList.forEach((o, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><textarea class="off-name" rows="2" style="width:100%">${o.name}</textarea></td>
+          <td><input type="text" class="off-nat" value="${o.nat}" style="width:70px" /></td>
+          <td><input type="text" class="off-incr" value="${o.incr}" style="width:30px; text-align:center" /></td>
+          <td><input type="text" class="off-board" value="${o.board}" style="width:30px; text-align:center" /></td>
+          <td><input type="text" class="off-gender" value="${o.gender}" style="width:30px; text-align:center" /></td>
+          <td><input type="text" class="off-stock" value="${o.stock}" style="width:30px; text-align:center" /></td>
+          <td><input type="text" class="off-pos" value="${o.officer}" /></td>
+          <td><input type="text" class="off-comm" value="${o.comm}" style="width:50px" /></td>
+          <td><input type="text" class="off-tin" value="${o.tin}" style="width:110px" /></td>
+          <td><button type="button" class="btn-remove" onclick="removeOfficer(${i})">✕</button></td>
+        `;
+        tb.appendChild(tr);
+      });
+    }
+
+    function addOfficerRow() {
+      officersList.push({ name: "", nat: "Filipino", incr: "N", board: "M", gender: "M", stock: "Y", officer: "Director", comm: "", tin: "" });
+      renderOfficers();
+    }
+    function removeOfficer(i) {
+      officersList.splice(i, 1);
+      renderOfficers();
+    }
+
+    // Dynamic Stockholders
+    const stockholdersList = [
+      { name: "JUAN DELA CRUZ\nMakati City", type: "Common", shares: 250000, amt: 250000, pct: "41.67%", paid: 100000, tin: "101-234-567-000" },
+      { name: "MARIA CLARA SANTOS\nMakati City", type: "Common", shares: 150000, amt: 150000, pct: "25.00%", paid: 60000, tin: "202-345-678-000" },
+      { name: "CRISOSTOMO IBARRA\nPasig City", type: "Common", shares: 100000, amt: 100000, pct: "16.67%", paid: 40000, tin: "303-456-789-000" },
+      { name: "ELIAS NORBERTO\nMuntinlupa City", type: "Common", shares: 50000, amt: 50000, pct: "8.33%", paid: 25000, tin: "404-567-890-000" },
+      { name: "OTHERS (Remaining Stockholders)", type: "Common", shares: 50000, amt: 50000, pct: "8.33%", paid: 25000, tin: "N.A." }
+    ];
+
+    function renderStockholders() {
+      const tb = document.getElementById('stockholdersBody');
+      tb.innerHTML = '';
+      stockholdersList.forEach((s, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td><textarea class="sh-name" rows="2" style="width:100%">${s.name}</textarea></td>
+          <td><input type="text" class="sh-type" value="${s.type}" style="width:65px" /></td>
+          <td><input type="number" class="sh-shares" value="${s.shares}" style="width:85px" /></td>
+          <td><input type="number" class="sh-amt" value="${s.amt}" style="width:95px" /></td>
+          <td><input type="text" class="sh-pct" value="${s.pct}" style="width:60px" /></td>
+          <td><input type="number" class="sh-paid" value="${s.paid}" style="width:95px" /></td>
+          <td><input type="text" class="sh-tin" value="${s.tin}" style="width:110px" /></td>
+          <td><button type="button" class="btn-remove" onclick="removeStockholder(${idx})">✕</button></td>
+        `;
+        tb.appendChild(tr);
+      });
+    }
+
+    function addStockholderRow() {
+      stockholdersList.push({ name: "", type: "Common", shares: 0, amt: 0, pct: "0.00%", paid: 0, tin: "" });
+      renderStockholders();
+    }
+    function removeStockholder(i) {
+      stockholdersList.splice(i, 1);
+      renderStockholders();
+    }
+    function removeRow(btn) {
+      btn.closest('tr').remove();
+      calcCap();
+    }
+
+    // Toggle AMLA details
+    function toggleAmlaDetails() {
+      const isCov = document.getElementById('amlaCovered').value === 'YES';
+      document.getElementById('amlaCategory').value = isCov ? "1.a Banks / Financial Institution" : "8. None of the above";
+      document.getElementById('amlaKycComplied').value = isCov ? "YES" : "N.A.";
+    }
+
+    // Load rich sample data
+    function loadSampleData() {
+      document.getElementById('gisYear').value = "2026";
+      document.getElementById('corpName').value = "PACIFIC HORIZON TECH VENTURES INC.";
+      document.getElementById('tradeName').value = "PACIFIC HORIZON";
+      document.getElementById('secRegNo').value = "CS202058493";
+      document.getElementById('dateRegistered').value = "2020-03-15";
+      document.getElementById('corpTIN').value = "009-482-192-000";
+      document.getElementById('fiscalYearEnd').value = "December 31";
+      document.getElementById('annualMeetingByLaws').value = "Every 3rd Wednesday of May";
+      document.getElementById('actualMeetingDate').value = "2026-05-20";
+      document.getElementById('websiteUrl').value = "https://www.pacifichorizon.ph";
+      document.getElementById('principalAddress').value = "32nd Floor, High Street South Corporate Plaza, BGC, Taguig City 1634";
+      document.getElementById('businessAddress').value = "32nd Floor, High Street South Corporate Plaza, BGC, Taguig City 1634";
+      document.getElementById('officialEmail').value = "compliance@pacifichorizon.ph";
+      document.getElementById('altEmail').value = "legal@pacifichorizon.ph";
+      document.getElementById('officialMobile').value = "+63 917 555 8899";
+      document.getElementById('altMobile').value = "+63 920 111 2233";
+      document.getElementById('auditorName').value = "Isla Lipana & Co. / Noel P. Rodriguez, CPA";
+      document.getElementById('auditorAccreditation').value = "SEC-CoA-8841-A";
+      document.getElementById('telephone').value = "(02) 8812-3456";
+      document.getElementById('industryCode').value = "J62010 (Computer Programming & Enterprise Solutions)";
+      document.getElementById('geoCode').value = "137607000";
+      document.getElementById('primaryPurpose').value = "To develop, market, distribute enterprise cloud software solutions and IT infrastructure consulting.";
+      document.getElementById('totalAssetsFS').value = "18,450,000.00";
+      document.getElementById('retainedEarnings').value = "4,250,000.00";
+      document.getElementById('corpSecName').value = "ATTY. MARIA CLARA SANTOS";
+      document.getElementById('execCity').value = "City of Taguig";
+      document.getElementById('execDate').value = "2026-05-25";
+      document.getElementById('corpSecID').value = "Philippine Passport # P9832104A";
+      document.getElementById('corpSecIDDetails').value = "DFA Manila / Valid until 10 Oct 2031";
+      calcCap();
+      calcManpower();
+      alert("Sample data successfully loaded!");
+    }
+
+    // Export to SEC CSV matching user's exact template
+    function exportGIS_CSV() {
+      const name = document.getElementById('corpName').value || "CORPORATION";
+      const year = document.getElementById('gisYear').value || "2026";
+      const secNo = document.getElementById('secRegNo').value || "";
+      const dateReg = document.getElementById('dateRegistered').value || "";
+      const tin = document.getElementById('corpTIN').value || "";
+      const addr = (document.getElementById('principalAddress').value || "").replace(/"/g, '""');
+
+      let csv = `GENERAL INFORMATION SHEET (GIS),,,,,,,,,,,,,
+FOR THE YEAR,${year},,,,,,,,,,,,
+STOCK CORPORATION,,,,,,,,,,,,,
+================================    PLEASE PRINT LEGIBLY  =====================================,,,,,,,,,,,,,
+CORPORATE NAME:,"${name}",,,,,,,,,,DATE REGISTERED:,"${dateReg}",
+BUSINESS/TRADE NAME:,"${document.getElementById('tradeName').value}",,,,,,,,,,,,
+SEC REGISTRATION NUMBER:,"${secNo}",,,,,,,,,,FISCAL YEAR END:,"${document.getElementById('fiscalYearEnd').value}",
+DATE OF ANNUAL MEETING PER BY-LAWS:,"${document.getElementById('annualMeetingByLaws').value}",,,,,,,,,,,,CORPORATE TAX IDENTIFICATION NUMBER (TIN):,"${tin}"
+ACTUAL DATE OF ANNUAL MEETING:,"${document.getElementById('actualMeetingDate').value}",,,,,,,,,,,,WEBSITE/URL ADDRESS:,"${document.getElementById('websiteUrl').value}"
+COMPLETE PRINCIPAL OFFICE ADDRESS:,"${addr}",,,,,,,,,,,,E-MAIL ADDRESS:,"${document.getElementById('officialEmail').value}"
+OFFICIAL E-MAIL ADDRESS,"${document.getElementById('officialEmail').value}",,,,OFFICIAL MOBILE NUMBER,"${document.getElementById('officialMobile').value}"
+NAME OF EXTERNAL AUDITOR & ITS SIGNING PARTNER:,"${document.getElementById('auditorName').value}",,,,,,,,SEC ACCREDITATION NUMBER:,"${document.getElementById('auditorAccreditation').value}"
+PRIMARY PURPOSE/ACTIVITY/INDUSTRY PRESENTLY ENGAGED IN:,"${(document.getElementById('primaryPurpose').value || '').replace(/"/g, '""')}"
+================================   INTERCOMPANY AFFILIATIONS   =======================================
+PARENT COMPANY,,"${document.getElementById('parentName').value}",,,,SEC REGISTRATION NO.,,"${document.getElementById('parentDetails').value}"
+================================    DIRECTORS / OFFICERS   ================================
+NAME/CURRENT RESIDENTIAL ADDRESS,NATIONALITY,INC'R,BOARD,GENDER,STOCKHOLDER,OFFICER,EXEC. COMM.,TAX IDENTIFICATION NUMBER\n`;
+
+      // Append officers
+      document.querySelectorAll('#officersBody tr').forEach(tr => {
+        const oName = (tr.querySelector('.off-name').value || '').replace(/"/g, '""').replace(/\n/g, ' ');
+        const oNat = tr.querySelector('.off-nat').value;
+        const oIncr = tr.querySelector('.off-incr').value;
+        const oBoard = tr.querySelector('.off-board').value;
+        const oGen = tr.querySelector('.off-gender').value;
+        const oStock = tr.querySelector('.off-stock').value;
+        const oPos = tr.querySelector('.off-pos').value;
+        const oComm = tr.querySelector('.off-comm').value;
+        const oTin = tr.querySelector('.off-tin').value;
+        csv += `"${oName}",${oNat},${oIncr},${oBoard},${oGen},${oStock},"${oPos}","${oComm}",${oTin}\n`;
+      });
+
+      // Stockholders
+      csv += `================================    TOP STOCKHOLDERS   ================================\n`;
+      csv += `NAME & ADDRESS,TYPE,NUMBER,AMOUNT,% OF OWNERSHIP,AMOUNT PAID,TIN\n`;
+      document.querySelectorAll('#stockholdersBody tr').forEach(tr => {
+        const sName = (tr.querySelector('.sh-name').value || '').replace(/"/g, '""').replace(/\n/g, ' ');
+        const sType = tr.querySelector('.sh-type').value;
+        const sShares = tr.querySelector('.sh-shares').value;
+        const sAmt = tr.querySelector('.sh-amt').value;
+        const sPct = tr.querySelector('.sh-pct').value;
+        const sPaid = tr.querySelector('.sh-paid').value;
+        const sTin = tr.querySelector('.sh-tin').value;
+        csv += `"${sName}",${sType},${sShares},${sAmt},${sPct},${sPaid},${sTin}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `SEC_GIS_${name.replace(/\s+/g, '_')}_${year}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // Generate Official SEC Form Preview
+    function generateDocument() {
+      const corp = document.getElementById('corpName').value || "N.A.";
+      const year = document.getElementById('gisYear').value || "2026";
+      const secNo = document.getElementById('secRegNo').value || "N.A.";
+      const dateReg = document.getElementById('dateRegistered').value || "N.A.";
+      const tin = document.getElementById('corpTIN').value || "N.A.";
+      const principalAddr = document.getElementById('principalAddress').value || "N.A.";
+      const email = document.getElementById('officialEmail').value || "N.A.";
+      const mobile = document.getElementById('officialMobile').value || "N.A.";
+      const byLawsMeeting = document.getElementById('annualMeetingByLaws').value || "N.A.";
+      const actualMeeting = document.getElementById('actualMeetingDate').value || "N.A.";
+      const auditor = document.getElementById('auditorName').value || "N.A.";
+      const purpose = document.getElementById('primaryPurpose').value || "N.A.";
+      const secAccr = document.getElementById('auditorAccreditation').value || "N.A.";
+      const tel = document.getElementById('telephone').value || "N.A.";
+      const secOfficer = document.getElementById('corpSecName').value || "THE CORPORATE SECRETARY";
+      const city = document.getElementById('execCity').value || "CITY OF MAKATI";
+      const execDate = document.getElementById('execDate').value || new Date().toISOString().split('T')[0];
+      const secID = document.getElementById('corpSecID').value || "N.A.";
+
+      let html = `
+        <!-- PAGE 1 -->
+        <div class="sec-sheet">
+          <div class="sec-header">
+            <h2>GENERAL INFORMATION SHEET (GIS)</h2>
+            <h3>FOR THE YEAR: <u>${year}</u></h3>
+            <strong>STOCK CORPORATION</strong>
+          </div>
+          <table class="sec-grid">
+            <tr>
+              <td colspan="3"><span class="field-label">CORPORATE NAME:</span><span class="field-val">${corp}</span></td>
+              <td><span class="field-label">DATE REGISTERED:</span><span class="field-val">${dateReg}</span></td>
+            </tr>
+            <tr>
+              <td colspan="2"><span class="field-label">BUSINESS / TRADE NAME:</span><span class="field-val">${document.getElementById('tradeName').value || 'N.A.'}</span></td>
+              <td colspan="2"><span class="field-label">FISCAL YEAR END:</span><span class="field-val">${document.getElementById('fiscalYearEnd').value}</span></td>
+            </tr>
+            <tr>
+              <td colspan="2"><span class="field-label">SEC REGISTRATION NUMBER:</span><span class="field-val">${secNo}</span></td>
+              <td colspan="2"><span class="field-label">CORPORATE TIN:</span><span class="field-val">${tin}</span></td>
+            </tr>
+            <tr>
+              <td colspan="2"><span class="field-label">ANNUAL MEETING PER BY-LAWS:</span><span class="field-val">${byLawsMeeting}</span></td>
+              <td colspan="2"><span class="field-label">ACTUAL DATE OF MEETING:</span><span class="field-val">${actualMeeting}</span></td>
+            </tr>
+            <tr>
+              <td colspan="4"><span class="field-label">COMPLETE PRINCIPAL OFFICE ADDRESS:</span><span class="field-val">${principalAddr}</span></td>
+            </tr>
+            <tr>
+              <td colspan="2"><span class="field-label">OFFICIAL EMAIL ADDRESS:</span><span class="field-val">${email}</span></td>
+              <td colspan="2"><span class="field-label">OFFICIAL MOBILE NUMBER:</span><span class="field-val">${mobile}</span></td>
+            </tr>
+            <tr>
+              <td colspan="2"><span class="field-label">EXTERNAL AUDITOR & SIGNING PARTNER:</span><span class="field-val">${auditor}</span></td>
+              <td><span class="field-label">SEC ACCREDITATION NO:</span><span class="field-val">${secAccr}</span></td>
+              <td><span class="field-label">TELEPHONE:</span><span class="field-val">${tel}</span></td>
+            </tr>
+            <tr>
+              <td colspan="4"><span class="field-label">PRIMARY PURPOSE / INDUSTRY PRESENTLY ENGAGED IN:</span><span class="field-val">${purpose}</span></td>
+            </tr>
+          </table>
+
+          <div style="font-weight:bold; margin: 10px 0 4px 0;">INTERCOMPANY AFFILIATIONS</div>
+          <table class="sec-grid">
+            <tr>
+              <th>AFFILIATION</th><th>COMPANY NAME</th><th>SEC REG. NO.</th><th>ADDRESS</th>
+            </tr>
+            <tr>
+              <td>PARENT</td><td>${document.getElementById('parentName').value}</td><td>${document.getElementById('parentDetails').value}</td><td>N.A.</td>
+            </tr>
+            <tr>
+              <td>SUBSIDIARY/AFFILIATE</td><td>${document.getElementById('subsidiaryDetails').value}</td><td>N.A.</td><td>N.A.</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- PAGE 2: DIRECTORS & OFFICERS -->
+        <div class="sec-sheet">
+          <div class="sec-header">
+            <h2>GENERAL INFORMATION SHEET</h2>
+            <strong>DIRECTORS / OFFICERS</strong>
+          </div>
+          <table class="sec-grid">
+            <thead>
+              <tr>
+                <th>NAME & RESIDENTIAL ADDRESS</th>
+                <th>NAT'L</th>
+                <th>INC'R</th>
+                <th>BOARD</th>
+                <th>SEX</th>
+                <th>STOCK</th>
+                <th>OFFICER POSITION</th>
+                <th>COMM</th>
+                <th>TAX IDENTIFICATION NO.</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+      document.querySelectorAll('#officersBody tr').forEach(tr => {
+        html += `
+          <tr>
+            <td>${tr.querySelector('.off-name').value.replace(/\n/g, '<br>')}</td>
+            <td style="text-align:center">${tr.querySelector('.off-nat').value}</td>
+            <td style="text-align:center">${tr.querySelector('.off-incr').value}</td>
+            <td style="text-align:center">${tr.querySelector('.off-board').value}</td>
+            <td style="text-align:center">${tr.querySelector('.off-gender').value}</td>
+            <td style="text-align:center">${tr.querySelector('.off-stock').value}</td>
+            <td>${tr.querySelector('.off-pos').value}</td>
+            <td style="text-align:center">${tr.querySelector('.off-comm').value}</td>
+            <td>${tr.querySelector('.off-tin').value}</td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+          <small>BOARD: C = Chairman, M = Member, I = Independent Director | INC'R: Y/N | STOCKHOLDER: Y/N</small>
+        </div>
+
+        <!-- PAGE 3: STOCKHOLDERS -->
+        <div class="sec-sheet">
+          <div class="sec-header">
+            <h2>GENERAL INFORMATION SHEET</h2>
+            <strong>TOP 20 STOCKHOLDERS & OWNERSHIP</strong>
+          </div>
+          <div style="margin-bottom: 6px;">
+            TOTAL NO. OF STOCKHOLDERS: <b>${document.getElementById('totalStockholdersCount').value}</b> | 
+            STOCKHOLDERS WITH 100+ SHARES: <b>${document.getElementById('stockholders100Count').value}</b> | 
+            TOTAL ASSETS PER FS: <b>₱ ${document.getElementById('totalAssetsFS').value || '0.00'}</b>
+          </div>
+          <table class="sec-grid">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>NAME, NATIONALITY & RESIDENTIAL ADDRESS</th>
+                <th>TYPE</th>
+                <th>SHARES</th>
+                <th>AMOUNT (PhP)</th>
+                <th>% OWN</th>
+                <th>PAID-UP (PhP)</th>
+                <th>TIN</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+      document.querySelectorAll('#stockholdersBody tr').forEach((tr, i) => {
+        html += `
+          <tr>
+            <td style="text-align:center">${i+1}</td>
+            <td>${tr.querySelector('.sh-name').value.replace(/\n/g, '<br>')}</td>
+            <td style="text-align:center">${tr.querySelector('.sh-type').value}</td>
+            <td style="text-align:right">${Number(tr.querySelector('.sh-shares').value).toLocaleString()}</td>
+            <td style="text-align:right">${Number(tr.querySelector('.sh-amt').value).toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
+            <td style="text-align:center">${tr.querySelector('.sh-pct').value}</td>
+            <td style="text-align:right">${Number(tr.querySelector('.sh-paid').value).toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
+            <td>${tr.querySelector('.sh-tin').value}</td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+
+        <!-- PAGE 4: JURAT & CERTIFICATION -->
+        <div class="sec-sheet">
+          <div class="sec-header">
+            <h2>GENERAL INFORMATION SHEET</h2>
+            <strong>VERIFICATION AND CERTIFICATION</strong>
+          </div>
+          <p style="margin-top:25px; line-height: 1.8; text-align: justify;">
+            I, <b><u>${secOfficer}</u></b>, Corporate Secretary of <b><u>${corp}</u></b>, declare under penalty of perjury that all matters set forth in this General Information Sheet (GIS) have been made in good faith, duly verified by me and to the best of my knowledge and belief are true, correct, and complete.
+          </p>
+          <p style="line-height: 1.8; text-align: justify;">
+            I hereby attest that all the information in this GIS are being submitted in compliance with the rules and regulations of the Securities and Exchange Commission (SEC) the collection, processing, storage and sharing of said information being necessary to carry out the functions of public authority for the performance of the constitutionally and statutorily mandated functions of the SEC as a regulatory agency.
+          </p>
+          <p style="line-height: 1.8; text-align: justify;">
+            I further attest that I have been authorized by the Board of Directors/Trustees to file this GIS with the SEC.
+          </p>
+          <div style="margin-top: 50px; text-align: right; padding-right: 40px;">
+            ____________________________________________________<br>
+            <strong>${secOfficer}</strong><br>
+            Corporate Secretary
+          </div>
+          <div style="margin-top: 60px; border-top: 1px solid #000; padding-top: 15px;">
+            <p>
+              SUBSCRIBED AND SWORN TO before me in <b>${city}</b> on <b>${execDate}</b>, affiant personally appeared before me and exhibited to me his/her competent evidence of identity consisting of <b>${secID}</b>.
+            </p>
+            <div style="margin-top: 50px; display: flex; justify-content: space-between;">
+              <div>
+                Doc. No. _______;<br>
+                Page No. _______;<br>
+                Book No. _______;<br>
+                Series of ${year}.
+              </div>
+              <div style="text-align: center;">
+                ______________________________________<br>
+                <strong>NOTARY PUBLIC</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('printArea').innerHTML = html;
+      document.getElementById('printPreviewModal').style.display = 'block';
+    }
+
+    function closePreview() {
+      document.getElementById('printPreviewModal').style.display = 'none';
+    }
+
+    // Initialize default tables
+    window.onload = function() {
+      renderOfficers();
+      renderStockholders();
+      calcCap();
+      calcManpower();
+    };
+  </script>
+</body>
+</html>
